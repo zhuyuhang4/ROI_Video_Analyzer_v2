@@ -1,0 +1,181 @@
+classDiagram
+    direction LR
+
+    class VideoState {
+        +str video_path
+        +int total_frames
+        +int current_frame
+        +bool is_playing
+        +tuple~int,int,int,int~|None roi
+        +float threshold
+        +str col1_name
+        +str col2_name
+        +str processing_method
+        +bool is_processing
+        +float zoom
+        +int pan_x
+        +int pan_y
+        +reset()
+        +set_roi(x: int, y: int, w: int, h: int)
+    }
+
+    class ROIStats {
+        +float mean
+        +float min_val
+        +float max_val
+        +int binary_result
+    }
+
+    class MainWindow {
+        -VideoState _state
+        -Toolbar _toolbar
+        -VideoPanel _video_panel
+        -SidePanel _side_panel
+        +__init__()
+        -_setup_ui()
+        -_connect_signals()
+        -_on_open_video()
+        -_on_play()
+        -_on_pause()
+        -_on_prev_frame()
+        -_on_next_frame()
+        -_on_start_plot()
+        -_on_stop_plot()
+        -_on_export_csv()
+        -_on_export_png()
+        -_on_roi_changed()
+        -_on_threshold_changed(value: float)
+        -_on_export_progress(frame: int, pct: float, total: int)
+        -_on_export_finished(data: list)
+        -_on_export_error(msg: str)
+        +closeEvent(event)
+    }
+
+    class Toolbar {
+        +QPushButton btn_open
+        +QPushButton btn_play
+        +QPushButton btn_pause
+        +QPushButton btn_prev
+        +QPushButton btn_next
+        +QPushButton btn_calc
+        +QPushButton btn_stop
+        +__init__(parent)
+    }
+
+    class VideoPanel {
+        +VideoCanvas canvas
+        +StatusBar status_bar
+        +QSlider frame_slider
+        +pg.PlotWidget plot_widget
+        +pg.PlotItem plot_curve
+        -list plot_x
+        -list plot_y
+        +__init__(parent)
+        +update_plot(x: list, y: list)
+        +clear_plot()
+        +set_frame_slider_max(max: int)
+        +set_frame_slider_value(val: int)
+    }
+
+    class VideoCanvas {
+        +pyqtSignal roi_changed
+        +pyqtSignal pan_range_changed
+        +pyqtSignal frame_changed
+        -np.ndarray _frame
+        -np.ndarray _display_frame
+        -float _base_scale
+        -float _zoom
+        -int _offset_x
+        -int _offset_y
+        -int _pan_x
+        -int _pan_y
+        -tuple|None _roi
+        -bool _drawing
+        -bool _dragging
+        -bool _resizing
+        +__init__()
+        +set_frame(frame: np.ndarray)
+        +set_pan(pan_x: int, pan_y: int)
+        +reset_pan()
+        +get_roi_stats() ROIStats|None
+        +get_roi() tuple|None
+        -_update_display()
+        -_map_to_image(event) tuple
+        -paintEvent(event)
+        -wheelEvent(event)
+        -mousePressEvent(event)
+        -mouseMoveEvent(event)
+        -mouseReleaseEvent(event)
+    }
+
+    class SidePanel {
+        +StatsGrid stats_grid
+        +ThresholdSection threshold_section
+        +ExportSection export_section
+        +__init__(parent)
+        +update_stats(stats: ROIStats)
+        +set_progress(pct: float)
+        +set_processing(is_processing: bool)
+    }
+
+    class StatsGrid {
+        +QLabel lbl_mean
+        +QLabel lbl_min
+        +QLabel lbl_max
+        +QLabel lbl_binary
+        +__init__(parent)
+        +update(stats: ROIStats)
+    }
+
+    class ThresholdSection {
+        +QSlider slider
+        +QSpinBox spinbox
+        +QLineEdit col1_input
+        +QLineEdit col2_input
+        +pyqtSignal threshold_changed
+        +__init__(parent)
+        +get_threshold() float
+        +get_col_names() tuple
+        -_on_slider_changed(value: int)
+        -_on_spinbox_changed(value: int)
+    }
+
+    class ExportSection {
+        +QPushButton btn_csv
+        +QPushButton btn_png
+        +QProgressBar progress_bar
+        +__init__(parent)
+        +set_progress(pct: int)
+        +set_enabled(enabled: bool)
+    }
+
+    class ExportWorker {
+        +pyqtSignal progress
+        +pyqtSignal finished
+        +pyqtSignal error
+        +pyqtSignal warning
+        +pyqtSignal info
+        -str _video_path
+        -tuple _roi_coords
+        -float _threshold
+        -bool _stop_flag
+        +__init__(video_path, roi_coords, threshold)
+        +stop()
+        +run()
+        -_process_with_ffmpegcv(data: list) list
+        -_process_with_opencv(data: list) list
+        -_adjust_roi_to_even(x,y,w,h) tuple
+    }
+
+    MainWindow *-- VideoState : _state
+    MainWindow *-- Toolbar : _toolbar
+    MainWindow *-- VideoPanel : _video_panel
+    MainWindow *-- SidePanel : _side_panel
+    VideoPanel *-- VideoCanvas : canvas
+    VideoPanel *-- StatusBar : status_bar
+    SidePanel *-- StatsGrid : stats_grid
+    SidePanel *-- ThresholdSection : threshold_section
+    SidePanel *-- ExportSection : export_section
+    MainWindow ..> ExportWorker : creates
+    VideoCanvas ..> ROIStats : produces
+    ThresholdSection ..> VideoState : updates threshold

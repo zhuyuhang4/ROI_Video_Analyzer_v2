@@ -1,0 +1,126 @@
+sequenceDiagram
+    participant User
+    participant main as main.py
+    participant app as app.py
+    participant theme as theme.py
+    participant win as MainWindow
+
+    User->>main: python main.py
+    main->>app: create_app()
+    app->>theme: apply_theme(app)
+    theme-->>app: 注入QSS + pyqtgraph配色
+    app->>win: MainWindow()
+    win->>win: _setup_ui()
+    win->>win: _connect_signals()
+    win-->>app: 窗口就绪
+    app->>User: win.show()
+
+---
+
+sequenceDiagram
+    participant User
+    participant TB as Toolbar
+    participant MW as MainWindow
+    participant VS as VideoState
+    participant VC as VideoCanvas
+    participant SP as SidePanel
+
+    User->>TB: 点击"打开视频"
+    TB->>MW: btn_open.clicked
+    MW->>MW: QFileDialog.getOpenFileName
+    MW->>VS: video_path = path, total_frames = N
+    MW->>VC: set_frame(first_frame)
+    VC->>VC: _update_display() → paintEvent
+    VC-->>MW: roi_changed signal
+    MW->>SP: update_stats(ROIStats)
+    MW->>MW: frame_slider max = N-1
+
+---
+
+sequenceDiagram
+    participant User
+    participant VC as VideoCanvas
+    participant MW as MainWindow
+    participant SP as SidePanel
+
+    User->>VC: 鼠标拖拽绘制ROI
+    VC->>VC: mousePressEvent → drawing=True
+    VC->>VC: mouseMoveEvent → 更新roi
+    VC->>VC: mouseReleaseEvent
+    VC->>VC: roi_changed.emit()
+    VC-->>MW: roi_changed signal
+    MW->>VC: get_roi_stats()
+    VC-->>MW: ROIStats(mean, min, max, binary)
+    MW->>SP: update_stats(stats)
+    SP->>SP: 更新4宫格显示
+
+---
+
+sequenceDiagram
+    participant User
+    participant TS as ThresholdSection
+    participant MW as MainWindow
+    participant VC as VideoCanvas
+
+    User->>TS: 拖动阈值滑条
+    TS->>TS: _on_slider_changed(value)
+    TS->>TS: spinbox.blockSignals(True)
+    TS->>TS: spinbox.setValue(value)
+    TS->>TS: threshold_changed.emit(value)
+    TS-->>MW: threshold_changed signal
+    MW->>MW: _on_threshold_changed(value)
+    MW->>VC: 触发ROI统计刷新
+    Note over MW: 二值结果根据新阈值重新计算
+
+---
+
+sequenceDiagram
+    participant User
+    participant ES as ExportSection
+    participant MW as MainWindow
+    participant EW as ExportWorker
+    participant SP as SidePanel
+
+    User->>ES: 点击"导出CSV"
+    ES->>MW: btn_csv.clicked
+    MW->>MW: 读取threshold_section参数
+    MW->>EW: ExportWorker(path, roi, threshold)
+    MW->>EW: start()
+    EW->>EW: _process_with_ffmpegcv()
+    EW-->>MW: info("尝试ffmpegcv")
+    MW->>SP: status_bar 更新处理方式chip
+
+    loop 逐帧处理
+        EW-->>MW: progress(frame, pct, total)
+        MW->>SP: set_progress(int(pct))
+    end
+
+    EW-->>MW: finished(data)
+    MW->>MW: save_csv_data()
+    MW->>SP: set_progress(100)
+    MW->>SP: set_processing(False)
+
+---
+
+sequenceDiagram
+    participant User
+    participant TB as Toolbar
+    participant MW as MainWindow
+    participant VP as VideoPanel
+    participant VC as VideoCanvas
+
+    User->>TB: 点击"计算均值曲线"
+    TB->>MW: btn_calc.clicked
+    MW->>VP: clear_plot()
+    MW->>MW: cur_frame=0, cap.set(0)
+
+    loop 定时器10ms
+        MW->>MW: plot_timer callback
+        MW->>MW: cap.read()
+        MW->>VC: set_frame(frame)
+        MW->>VC: get_roi_stats()
+        VC-->>MW: mean
+        MW->>VP: update_plot(x, y)
+    end
+
+    MW->>VP: plot完成

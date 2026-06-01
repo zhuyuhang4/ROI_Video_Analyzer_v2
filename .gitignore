@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+*.spec
+
+# PyInstaller
+*.manifest
+*.toc
+*.pkg
+warn-*.txt
+xref-*.html
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Local config
+config.ini
+
+# FFmpeg binaries (large binaries, not for repo)
+ffmpeg.exe
+ffplay.exe
+ffprobe.exe
+
+# Output files
+*.csv
+*.png
+!dist/roi_gray_plot.png
